@@ -1,1 +1,17 @@
 Torrent File Structure
+================================== ==============================================
+                          Taken Part Structure
+1 - Queue must be taken as it represents the queue of pieces blocks which need to be _requested
+2 - Accordingly we have now a data structure for pieces (pieceArray) and the queue of blocks corresponding to it(pending for request).
+**Note that : The queue used in allen Kim project is global and used to register all the block requests of a peer at a 
+time (not specific to a particular piece)"When we need to request for a piece it places all its corresponding blocks in the queue"
+================================= ===================================================
+                          Needed Part structure
+1 -  Since we have pieceArray(A suitable structure for bitfield) we now can combine it with the remaining components to form 
+the "infoPeerList" we need to assess every peer and to facilitate next phases(Download and upload).
+"Changes here include a class for infoPeer including its properties and changes throughout the project for defining the peer accessed at a time"
+2 - message sequence assurance of the protocol.(Explained within the photo on whatsapp) " the remaining is interested(sent) -> request(sent)(If not choked(recived)) -> piece(recived)"
+3 - download structure(How it would be downloaded "File or dir or WTF") and destination.  //For this part we will specify a target dir where for each torrent we create a new dir and append the downloaded pieces in it. 
+**Note :
+1- pieceArray here is for tracking pieces needed within the peer not of other peers (we just need one piece not two as specified by constructor for other peers in infoPeer)
+2- Bitfield is bits for each pieceBlock with piece index at the high bit as specified by the specification " The high bit in the first byte corresponds to piece index 0"

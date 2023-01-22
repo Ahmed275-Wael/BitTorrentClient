@@ -1,4 +1,6 @@
 const torrentParser = require("./torrentParser");
+const Pieces = require('./pieceArray');
+const Queue = require('./BlockQueue');
 let connected = 0;
 function onWholeMsg(socket, callback) {
     console.log("I Recieved a message")
@@ -23,28 +25,29 @@ function onWholeMsg(socket, callback) {
       else if (connected) {
     
         const parsedMsg = parse(msg);
+        const queue = new Queue(torrent);
         console.log("messageId : "+ parsedMsg.id +" "+ Buffer.from(parsedMsg.payload, "utf-8"));
         switch(parsedMsg.id){
           
           case 4 : haveHandler(socket,bitfield,parsedMsg.payload);
-          case 5 :  bitfieldHandler(parsedMsg.size,parsedMsg.payload,socket,torrent,bitfield);
+          case 5 :  bitfieldHandler(parsedMsg.size, parsedMsg.payload, queue, socket, torrent, bitfield);
         
         }
       }
   }
   
-  function bitfieldHandler(length, payload , socket, torrent, bitfield){
-    for(let j = 0; j <length; j++){
-      bitfield.push(false);
-    }
+  function bitfieldHandler(payload , queue, socket, torrent, bitfield){
     payload.forEach((byte, i) => {
       for (let j = 0; j < 8; j++) {
-        if (byte % 2) bitfield[i * 8 + 7 - j] = true; // i*8 for specifying the byte index and 7-j for specifying the bit index in the byte in BigIndean 
+        if (byte % 2) {
+          queue.queue(i * 8 + 7 - j);
+          bitfield[i * 8 + 7 - j] = true;
+        } // i*8 for specifying the byte index and 7-j for specifying the bit index in the byte in BigIndean 
         byte = Math.floor(byte / 2); //dividing by two to get to the next bit in the byte
       }
       //also byte %2 is testing the value of the current bit
     });
-
+    
     
   }
   function haveHandler(socket, bitfield, payload) {

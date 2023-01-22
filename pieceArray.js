@@ -1,6 +1,6 @@
 'use strict';
 
-const tp = require('./torrent-parser');
+const tp = require('./torrentParser');
 
 module.exports = class {
   constructor(torrent) {
@@ -9,7 +9,6 @@ module.exports = class {
       const arr = new Array(nPieces).fill(null);
       return arr.map((_, i) => new Array(tp.blocksPerPiece(torrent, i)).fill(false));
     }
-    
     this._requested = buildPiecesArray();
     this._received = buildPiecesArray();
   }
