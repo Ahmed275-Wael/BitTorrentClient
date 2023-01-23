@@ -7,6 +7,7 @@ module.exports = class {
     function buildPiecesArray() {
       const nPieces = torrent.info.pieces.length / 20;
       const arr = new Array(nPieces).fill(null);
+      console.log("test" + tp.blocksPerPiece(torrent, 0));
       return arr.map((_, i) => new Array(tp.blocksPerPiece(torrent, i)).fill(false));
     }
     this._requested = buildPiecesArray();

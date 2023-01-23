@@ -18,32 +18,37 @@ function onWholeMsg(socket, callback) {
       }
     });
   }
-  function msghandler(msg, socket, torrent, infoPeer, queue){
+  function msghandler(msg, socket, torrent, infoPeer, queue, pieces){
       if (isHandshake(msg)){
        let isValid =  handShakeHandler(msg,socket,torrent);
        if (isValid) {
-        socket.write(req.buildInterested());
+        socket.write(requestHandler.buildInterested());
        }
       }
       else if (connected) {
     
         const parsedMsg = parse(msg);
        
-        console.log("messageId : "+ parsedMsg.id +" "+ Buffer.from(parsedMsg.payload, "utf-8"));
+     console.log("messageId : "+ parsedMsg.id );
         switch(parsedMsg.id){
           case 0 : chokeHandler(infoPeer);
-          case 1: unchokeHandler(socket);
+          break;
+          case 1: unchokeHandler(socket,infoPeer ,queue, pieces);
+          break;
           case 2: interestedHandler(infoPeer);
+          break;
           case 3: notIntersetedHandler(infoPeer);
-          case 4 : haveHandler(socket,parsedMsg.payload, queue, infoPeer);
-          case 5 :  bitfieldHandler(parsedMsg.payload, queue, socket, torrent, infoPeer);
-          
+          break;
+          case 4 : haveHandler(socket,parsedMsg.payload, queue, infoPeer, pieces);
+          break;
+          case 5 :  bitfieldHandler(parsedMsg.payload, queue, socket, torrent, infoPeer, pieces);
+          break;
         
         }
       }
   }
   
-  function bitfieldHandler(payload , queue, socket, torrent, infoPeer) {
+  function bitfieldHandler(payload , queue, socket, torrent, infoPeer, pieces) {
     const queueEmpty = queue.length === 0;
     payload.forEach((byte, i) => {
       for (let j = 0; j < 8; j++) {
@@ -58,7 +63,9 @@ function onWholeMsg(socket, callback) {
     if (queueEmpty) requestPiece(socket, pieces, queue, infoPeer);
     
   }
-  function haveHandler(socket, payload, queue, infoPeer) {
+  function haveHandler(socket, payload, queue, infoPeer, pieces) {
+    console.log("payload " + payload);
+ 
     const pieceIndex = payload.readUInt32BE(0);
     const queueEmpty = queue.length === 0;
     queue.queue(pieceIndex);
@@ -68,9 +75,9 @@ function onWholeMsg(socket, callback) {
     infoPeer.setChocked();
  
   }
-  function unchokeHandler(socket, infoPeer) {
+  function unchokeHandler(socket,infoPeer ,queue, pieces) {
     infoPeer.setUnChoked();
-   //requestPiece(socket, pieces, queue);
+      requestPiece(socket, pieces, queue, infoPeer);
   }
   function interestedHandler(infoPeer) {
         infoPeer.setInterested();
@@ -120,6 +127,7 @@ function isHandshake(msg) {
   };
 
   function requestPiece(socket, pieces, queue, infoPeer) {
+    console.log("i will request pieces....");
     if (infoPeer.isChoked()) return null;
   
     while (queue.length()) {

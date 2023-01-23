@@ -5,9 +5,12 @@ This Files Used To Extract Data From Torrent File
 
 const fs = require("fs");
 const bencode = require('bencode');
-const file = fs.readFileSync("KELLYTV-MOCKINGBIRDBYEMINEM234_archive.torrent"); 
+const file = fs.readFileSync("../torrent/KELLYTV-MOCKINGBIRDBYEMINEM234_archive.torrent"); 
 const torrent = bencode.decode(file);
 const crypto = require('crypto');
+ 
+module.exports.BLOCK_LEN = Math.pow(2, 14);
+
 exports.getTrackerUrl = function () {
     return torrent.announce.toString('utf8');
 }
@@ -28,7 +31,9 @@ exports.size = function (torrent) {
 
 
 exports.piecesLen = (torrent, pieceIndex) => {
-    const totalLength = bignum.fromBuffer(this.size(torrent)).toNumber();
+    //  const totalLength = BigInt(this.size(torrent));
+    //lw l size aktr mn 32 bit htdrb
+    const totalLength = this.size(torrent);
     const pieceLength = torrent.info['piece length'];
   
     const lastPieceLength = totalLength % pieceLength;
@@ -38,12 +43,12 @@ exports.piecesLen = (torrent, pieceIndex) => {
   };
   
 exports.blocksPerPiece = (torrent, pieceIndex) => {
-    const pieceLength = this.pieceLen(torrent, pieceIndex);
+    const pieceLength = this.piecesLen(torrent, pieceIndex);
     return Math.ceil(pieceLength / this.BLOCK_LEN);
   };
   
 exports.blockLen = (torrent, pieceIndex, blockIndex) => {
-    const pieceLength = this.pieceLen(torrent, pieceIndex);
+    const pieceLength = this.piecesLen(torrent, pieceIndex);
   
     const lastPieceLength = pieceLength % this.BLOCK_LEN;
     const lastPieceIndex = Math.floor(pieceLength / this.BLOCK_LEN);
