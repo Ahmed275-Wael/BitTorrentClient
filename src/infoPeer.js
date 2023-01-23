@@ -23,14 +23,25 @@ module.exports = class {
   setChoked(){
     this.choked = true;
   }
+  setUnChoked(){
+    this.choked = false;
+  }
   setInteresting(){
     this.isInteresting = true;
   }
   setInterested(){
     this.isInterested = true;
   }
+  setNotInterested() {
+    this.isInterested = false;
+  }
   havePiece(pieceIndex){
     this._Pieces[pieceIndex] = true;
   }
-
+  isChoked() {
+    return this.choked;
+  }
+  isChoking() {
+    return this.choking;
+  }
 };

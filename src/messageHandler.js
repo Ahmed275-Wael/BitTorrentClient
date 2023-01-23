@@ -1,6 +1,6 @@
 const torrentParser = require("./torrentParser");
 const Pieces = require('./pieceArray');
-const Queue = require('./BlockQueue');
+const requestHandler = require("./req.js");
 let connected = 0;
 function onWholeMsg(socket, callback) {
     console.log("I Recieved a message")
@@ -18,50 +18,75 @@ function onWholeMsg(socket, callback) {
       }
     });
   }
-  function msghandler(msg, socket, torrent, bitfield){
+  function msghandler(msg, socket, torrent, infoPeer, queue){
       if (isHandshake(msg)){
-        handShakeHandler(msg,socket,torrent);
+       let isValid =  handShakeHandler(msg,socket,torrent);
+       if (isValid) {
+        socket.write(req.buildInterested());
+       }
       }
       else if (connected) {
     
         const parsedMsg = parse(msg);
-        const queue = new Queue(torrent);
+       
         console.log("messageId : "+ parsedMsg.id +" "+ Buffer.from(parsedMsg.payload, "utf-8"));
         switch(parsedMsg.id){
+          case 0 : chokeHandler(infoPeer);
+          case 1: unchokeHandler(socket);
+          case 2: interestedHandler(infoPeer);
+          case 3: notIntersetedHandler(infoPeer);
+          case 4 : haveHandler(socket,parsedMsg.payload, queue, infoPeer);
+          case 5 :  bitfieldHandler(parsedMsg.payload, queue, socket, torrent, infoPeer);
           
-          case 4 : haveHandler(socket,bitfield,parsedMsg.payload);
-          case 5 :  bitfieldHandler(parsedMsg.size, parsedMsg.payload, queue, socket, torrent, bitfield);
         
         }
       }
   }
   
-  function bitfieldHandler(payload , queue, socket, torrent, bitfield){
+  function bitfieldHandler(payload , queue, socket, torrent, infoPeer) {
+    const queueEmpty = queue.length === 0;
     payload.forEach((byte, i) => {
       for (let j = 0; j < 8; j++) {
         if (byte % 2) {
           queue.queue(i * 8 + 7 - j);
-          bitfield[i * 8 + 7 - j] = true;
+          // bitfield[i * 8 + 7 - j] = true;
         } // i*8 for specifying the byte index and 7-j for specifying the bit index in the byte in BigIndean 
         byte = Math.floor(byte / 2); //dividing by two to get to the next bit in the byte
       }
       //also byte %2 is testing the value of the current bit
     });
-    
+    if (queueEmpty) requestPiece(socket, pieces, queue, infoPeer);
     
   }
-  function haveHandler(socket, bitfield, payload) {
+  function haveHandler(socket, payload, queue, infoPeer) {
     const pieceIndex = payload.readUInt32BE(0);
-    bitfield[pieceIndex] = true;
-///    console.log("New Bitfield : " + bitfield);
+    const queueEmpty = queue.length === 0;
+    queue.queue(pieceIndex);
+    if (queueEmpty) requestPiece(socket, pieces, queue, infoPeer);
   }
+  function chokeHandler(infoPeer) {
+    infoPeer.setChocked();
+ 
+  }
+  function unchokeHandler(socket, infoPeer) {
+    infoPeer.setUnChoked();
+   //requestPiece(socket, pieces, queue);
+  }
+  function interestedHandler(infoPeer) {
+        infoPeer.setInterested();
+  }
+  function notIntersetedHandler(infoPeer) {
+    infoPeer.setNotInterested();
+}
   function handShakeHandler(msg, socket, torrent) {
     if (Buffer.compare(torrentParser.infoHash(torrent), msg.slice(28,47))) {
          console.log("I recieved a valid handshake");
+         return 1;
         //Send Bit field if there is
     } else {
         //If not handshake close connection (According to bit torrent protcol)
         socket.destroy();
+        return 0;
     }
   }
 
@@ -69,6 +94,7 @@ function isHandshake(msg) {
     //console.log("im the msg");
     //console.log(msg);
     connected = 1;
+  
     return msg.length === msg.readUInt8(0) + 49 &&
            msg.toString('utf8', 1, 20) === 'BitTorrent protocol' 
          ;
@@ -93,7 +119,18 @@ function isHandshake(msg) {
     }
   };
 
- 
+  function requestPiece(socket, pieces, queue, infoPeer) {
+    if (infoPeer.isChoked()) return null;
+  
+    while (queue.length()) {
+      const pieceBlock = queue.deque();
+      if (pieces.needed(pieceBlock)) {
+        socket.write(requestHandler.buildRequest(pieceBlock));
+        pieces.addRequested(pieceBlock);
+        break;
+      }
+    }
+  }
 
   module.exports = {
     onWholeMsg,
